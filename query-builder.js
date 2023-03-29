@@ -1,81 +1,58 @@
 class QueryBuilder {
-  constructor(db) {
-    this.db = db;
-    this.reset();
+  constructor(table) {
+    this.table = table;
+    this.selectCols = [];
+    this.whereConditions = [];
   }
 
-  reset() {
-    this.sql = '';
-    this.params = [];
-    this.clauseAdded = false;
-  }
-
-  select(columns) {
-    this.reset();
-    this.sql = `SELECT ${columns}`;
+  select(...cols) {
+    this.selectCols = [...cols];
     return this;
   }
 
-  from(table) {
-    return this.addClause('FROM', table);
-  }
-
-  where(condition, ...params) {
-    return this.addClause('WHERE', condition, ...params);
-  }
-
-  orWhere(condition, ...params) {
-    return this.addClause('OR', condition, ...params);
-  }
-
-  andWhere(condition, ...params) {
-    return this.addClause('AND', condition, ...params);
-  }
-
-  orderBy(columns, direction = 'ASC') {
-    if (typeof columns === 'string') {
-      columns = [columns];
-    }
-
-    const sql = columns.map((col) => `${col} ${direction}`).join(', ');
-    return this.addClause('ORDER BY', sql);
-  }
-
-  limit(n) {
-    return this.addClause('LIMIT', n);
-  }
-
-  addClause(keyword, ...parts) {
-    const sql = parts.shift();
-    const params = parts;
-    const clause = this.clauseAdded ? ` ${keyword} ${sql}` : `${keyword} ${sql}`;
-    this.sql += clause;
-    this.params.push(...params);
-    this.clauseAdded = true;
+  where(column, operator, value) {
+    this.whereConditions.push(`${column} ${operator} '${value}'`);
     return this;
-  }
-
-  whereEqual(column, value) {
-    return this.where(`${column} = ?`, value);
-  }
-
-  whereNotEqual(column, value) {
-    return this.where(`${column} <> ?`, value);
   }
 
   whereLike(column, value) {
-    return this.where(`${column} LIKE ?`, `%${value}%`);
+    this.whereConditions.push(`${column} LIKE '${value}'`);
+    return this;
   }
 
-  execute() {
-    return new Promise((resolve, reject) => {
-      this.db.all(this.sql, this.params, (err, rows) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(rows);
-        }
-      });
-    });
+  whereIn(column, values) {
+    const valueString = values.map((value) => `'${value}'`).join(',');
+    this.whereConditions.push(`${column} IN (${valueString})`);
+    return this;
   }
+
+  whereNotIn(column, values) {
+    const valueString = values.map((value) => `'${value}'`).join(',');
+    this.whereConditions.push(`${column} NOT IN (${valueString})`);
+    return this;
+  }
+
+  whereNull(column) {
+    this.whereConditions.push(`${column} IS NULL`);
+    return this;
+  }
+
+  whereNotNull(column) {
+    this.whereConditions.push(`${column} IS NOT NULL`);
+    return this;
+  }
+
+  build() {
+    let query = `SELECT ${this.selectCols.length > 0 ? this.selectCols.join(', ') : '*'} FROM ${this.table}`;
+    if (this.whereConditions.length > 0) {
+      query += ` WHERE ${this.whereConditions.join(' AND ')}`;
+    }
+    return query;
+  }
+}
+
+if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
+  module.exports = QueryBuilder;
+} else {
+  window.QueryBuilder = QueryBuilder;
 }
