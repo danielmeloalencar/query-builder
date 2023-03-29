@@ -51,8 +51,5 @@ class QueryBuilder {
   }
 }
 
-if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
-  module.exports = QueryBuilder;
-} else {
-  window.QueryBuilder = QueryBuilder;
-}
+export default QueryBuilder;
+module.exports = QueryBuilder;
